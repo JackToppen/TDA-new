@@ -21,7 +21,7 @@ install.packages(c("TDA", "ggplot2"))
 source("utilities.R")
 
 # specify location of discretized CSVs with cell values and path for TDA outputs
-csv_path <- "~/Research/GT/TDA-pipeline/R/data/"
+csv_path <- "~/Downloads/CSVs"
 out_path <- "outputs"
 
 # image (width) resolution for outputted figures
@@ -39,8 +39,8 @@ make_dir(out_path)
 
 ```{r}
 # indicate cell types for only including specific cells (put NA for all cells)
-types <- c(0, 1)    # either a single value or vector
-index <- 10    # default index for cell type is last column
+types <- 1    # either a single value or vector
+index <- 16    # default index for cell type is last column
 
 # recursively iterates through specified path to find CSVs and make diagrams
 make_PDs(csv_path, out_path, types, index=index)

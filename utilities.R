@@ -20,7 +20,7 @@ make_PDs <- function(csv_path, out_path, types, index=NA) {
   
     # if there are cell types specified, only include those rows
     if (!any(is.na(types))) {
-      if (is.vector(types)) {
+      if (length(types) > 1) {
         df <- df[df[,index] %in% types,]    # if a vector is provided
       } else {
         df <- df[df[,index] == types,]    # if a single value
@@ -30,29 +30,41 @@ make_PDs <- function(csv_path, out_path, types, index=NA) {
     # compute persistence homology using Delaunay complex filtration (aka Alpha complex filtration)
     out <- alphaComplexDiag(df[,1:2], maxdimension=1, library=c("GUDHI", "Dionysus"), location=TRUE)
     PD <- out[["diagram"]]
+    print(PD)
     
-    # remove dimension zero points and get birth/death
-    PD <- PD[PD[,1] != 0, ]
-    PD[,2:3] <- sqrt(PD[,2:3])
+    # remove dimension zero points
+    PD <- PD[PD[,1] != 0,,drop=F]
     
-    # hold max birth/death and features of all 1-degree persistence diagrams
-    birth <- max(PD[,2])
-    death <- max(PD[,3])
-    features <- nrow(PD)
-    if (birth > max_birth) max_birth <- birth
-    if (death > max_death) max_death <- death
-    if (features > max_features) max_features <- features
-    
-    # get path to diagram CSV output
-    no_ext <- sub("\\.csv$", "", file)
-    filename <- paste0(no_ext, .Platform$file.sep, basename(no_ext), "_PD.csv")
-    PD_path <- concat_paths(out_path, filename)
-    
-    # make directory to output and write the CSV
-    make_dir(dirname(PD_path))
-    write.csv(PD, PD_path, row.names=FALSE)
+    # only continue if features exist
+    if (nrow(PD) > 0) {
+      PD[,2:3] <- sqrt(PD[,2:3])
+      
+      # hold max birth/death all 1-degree persistence diagrams
+      if (nrow(PD) > 1) {
+        birth <- max(PD[,2])
+        death <- max(PD[,3])
+      } else {
+        birth <- PD[1,2]
+        death <- PD[1,3]
+      }
+      if (birth > max_birth) max_birth <- birth
+      if (death > max_death) max_death <- death
+      
+      # additionally get max number of features
+      features <- nrow(PD)
+      if (features > max_features) max_features <- features
+      
+      # get path to diagram CSV output
+      no_ext <- sub("\\.csv$", "", file)
+      filename <- paste0(no_ext, .Platform$file.sep, basename(no_ext), "_PD.csv")
+      PD_path <- concat_paths(out_path, filename)
+      
+      # make directory to output and write the CSV
+      make_dir(dirname(PD_path))
+      write.csv(PD, PD_path, row.names=FALSE)
+    }
   }
-  
+   
   # save max birth/death for plotting and landscape generating
   rds_file <- concat_paths(out_path, "maxes.rds")
   saveRDS(c(max_birth, max_death, max_features), file=rds_file)
