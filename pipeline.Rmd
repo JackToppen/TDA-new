@@ -21,7 +21,7 @@ install.packages(c("TDA", "ggplot2"))
 source("utilities.R")
 
 # specify location of discretized CSVs with cell values and path for TDA outputs
-csv_path <- "~/Downloads/CSVs"
+csv_path <- "~/Research/GT/TDA-pipeline/R/data"
 out_path <- "outputs"
 
 # image (width) resolution for outputted figures
@@ -39,7 +39,7 @@ make_dir(out_path)
 
 ```{r}
 # indicate cell types for only including specific cells (put NA for all cells)
-types <- 1    # either a single value or vector
+types <- NA   # either a single value or vector
 index <- 16    # default index for cell type is last column
 
 # recursively iterates through specified path to find CSVs and make diagrams
@@ -76,6 +76,8 @@ n <- 50    # this will plot the first "n" functions
 # generate plots for PLs (this will read "maxes.rds" for the plot limits) 
 plot_PLs(out_path, n, resolution)
 ```
+
+------------------------------------------------------------------------
 
 ## Comparing homology between groups
 
@@ -116,6 +118,16 @@ plot_avgPL(path, groups, n, resolution)
 # specify the number of landscape functions to plot
 n <- 50    # this will plot the first "n" functions
 
-# generate plots comparing pairs from the specified groups
+# generate plots comparing pairs  (all combinations within "groups") from the specified groups
 plot_avgPL_diff(path, groups, n, resolution)
+```
+
+#### Permutation test between groups
+
+```{r}
+# specify the number of permutations to run
+reps <- 1000
+
+# run test comparing pairs (all combinations within "groups") from the specified groups
+perm_test(path, groups, reps=reps)
 ```

@@ -30,7 +30,6 @@ make_PDs <- function(csv_path, out_path, types, index=NA) {
     # compute persistence homology using Delaunay complex filtration (aka Alpha complex filtration)
     out <- alphaComplexDiag(df[,1:2], maxdimension=1, library=c("GUDHI", "Dionysus"), location=TRUE)
     PD <- out[["diagram"]]
-    print(PD)
     
     # remove dimension zero points
     PD <- PD[PD[,1] != 0,,drop=F]
@@ -183,7 +182,7 @@ make_avgPL <- function(path, groups) {
     files <- get_files(dir_path, "\\PL.csv$")
     n <- length(files)
     
-    # read the first PL to get average
+    # read the first PL to start average
     PL_file <- concat_paths(dir_path, files[[1]])
     total <- data.matrix(read.csv(PL_file))
     
@@ -242,7 +241,7 @@ plot_avgPL_diff <- function(path, groups, n, resolution) {
   
   # get all possible pairs and iterate through them
   pairs <- combn(groups, 2)
-  for (i in ncol(pairs)) {
+  for (i in 1:ncol(pairs)) {
     dir_1 <- pairs[1,i]
     dir_2 <- pairs[2,i]
     
@@ -269,6 +268,57 @@ plot_avgPL_diff <- function(path, groups, n, resolution) {
 }
 
 
+perm_test <- function(path, groups, reps=10000) {
+  # get all possible pairs and iterate through them
+  pairs <- combn(groups, 2)
+  for (i in 1:ncol(pairs)) {
+    dir_1 <- pairs[1,i]
+    dir_2 <- pairs[2,i]
+    
+    # get a matrix with rows as each PL within the first group
+    dir_path_1 <- concat_paths(path, dir_1)
+    PL_mat_1 <- PLs_to_mat(dir_path_1)
+    
+    # get a matrix with rows as each PL within the second group
+    dir_path_2 <- concat_paths(path, dir_2)
+    PL_mat_2 <- PLs_to_mat(dir_path_2)
+    
+    # compute average PL vector from each matrix
+    avgPL_1 <- colMeans(PL_mat_1)
+    avgPL_2 <- colMeans(PL_mat_2)
+    
+    # hold original distance of mean vectors and counter for test
+    dist <- distance(avgPL_1, avgPL_2)
+    count <- 0
+    
+    # merge the matrices and count number of rows in each
+    merged <- rbind(PL_mat_1, PL_mat_2)
+    n_1 <- nrow(PL_mat_1)
+    n_2 <- nrow(PL_mat_2)
+    total_rows <- n_1 + n_2
+    
+    # run k permutations
+    for (i in 1:reps) {
+      # create permutation of row indices
+      permutation <- sample(1:total_rows)
+      
+      # get average PL vector for each new group
+      avgPL_1 <- colMeans(merged[permutation[1:n_1],])
+      avgPL_2 <- colMeans(merged[permutation[(n_1+1):total_rows],])
+      
+      # increase count if distance of this permutation is greater than original
+      perm_dist <- distance(avgPL_1, avgPL_2)
+      if (perm_dist > dist) {
+        count <- count + 1
+      }
+    }
+    
+    # output p-value of comparison
+    print(paste0("p-value for ", dir_1, " vs. ", dir_2, " -> ", count / reps))
+  }
+}
+
+
 plot_PL <- function(PL, image_file, x_lim, y_lim, n, resolution) {
   # define color list for landscape functions
   colors <- c("#648FFF", "#6E77F8", "#785EF0", "#AA42B8", "#DC267F", "#ED4440", "#FE6100", "#FF8900", "#FFB000")
@@ -288,6 +338,27 @@ plot_PL <- function(PL, image_file, x_lim, y_lim, n, resolution) {
   # convert width to inches and write image file
   width <- resolution / 300    # 300 pixels per inch default
   ggsave(image_file, width=width, height=width*(y_lim[2]/x_lim[2]))
+}
+
+
+PLs_to_mat <- function(path) {
+  # create holder for vector representations of PLs
+  PLs <- list()
+  
+  # get files
+  files <- get_files(path, "\\PL.csv$")
+  n <- length(files)
+  
+  # iterate through all PL files
+  for (i in 1:n) {
+    # read the CSV and add landscape to total
+    PL_file <- concat_paths(path, files[[i]])
+    PL <- data.matrix(read.csv(PL_file))[,-1]    # remove first column
+    PLs[[i]] <- as.vector(PL)
+  }
+  
+  # return a matrix with each row as a vector for each PL
+  return(do.call(rbind, PLs))
 }
 
 
@@ -314,4 +385,10 @@ concat_paths <- function(path_1, path_2) {
   
   # return correct joined paths
   return(paste0(path_1, path_2))
+}
+
+
+distance <- function(u, v) {
+  # return euclidean distance
+  sqrt(sum((u - v) ^ 2))
 }
