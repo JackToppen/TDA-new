@@ -49,8 +49,9 @@ make_PDs(csv_path, out_path, types, index=index)
 #### Plotting persistence diagrams
 
 ```{r}
-# diagram point color
+# diagram point color and potentially specific custom plot max
 color <- "orange"
+# plot_max <- 25
 
 # generate plots for PDs (this will read "maxes.rds" for the plot limits)
 plot_PDs(out_path, color, resolution)
@@ -125,9 +126,10 @@ plot_avgPL_diff(path, groups, n, resolution)
 #### Permutation test between groups
 
 ```{r}
-# specify the number of permutations to run
+# specify the max number of landscapes to use and the number of permutations to run
+depth <- 30
 reps <- 1000
 
 # run test comparing pairs (all combinations within "groups") from the specified groups
-perm_test(path, groups, reps=reps)
+perm_test(path, groups, depth, reps)
 ```

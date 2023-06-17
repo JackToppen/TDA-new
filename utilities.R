@@ -70,7 +70,7 @@ make_PDs <- function(csv_path, out_path, types, index=NA) {
 }
 
 
-plot_PDs <- function(out_path, color, resolution) {
+plot_PDs <- function(out_path, color, resolution, plot_max=NA) {
   # read the max/birth RDS file
   rds_file <- concat_paths(out_path, "maxes.rds")
   maxes <- readRDS(rds_file)
@@ -87,7 +87,11 @@ plot_PDs <- function(out_path, color, resolution) {
     image_path <- concat_paths(out_path, local_path)
     
     # plot the persistence diagram (include extra space beyond max death)
-    plot_lim <- 1.1 * maxes[2]
+    if (!is.na(plot_max)) {
+      plot_lim <- plot_max
+    } else {
+      plot_lim <- 1.1 * maxes[2]
+    }
     p <- ggplot(PD, aes(x=Birth, y=Death)) +
       geom_point(shape=16, color=color) +
       scale_x_continuous(expand=c(0, 0), limits=c(0, plot_lim)) + 
@@ -261,14 +265,18 @@ plot_avgPL_diff <- function(path, groups, n, resolution) {
     diffPL <- avgPL_1 - avgPL_2
     diffPL[,1] <- avgPL_1[,1]
     
+    # change the file separator to dash if path contains it
+    rename_1 <- sub(.Platform$file.sep, "-", dir_1)
+    rename_2 <- sub(.Platform$file.sep, "-", dir_2)
+    
     # plot difference of landscapes
-    image_path <- concat_paths(path, paste0(basename(dir_1), "_", basename(dir_2), "_diff.png"))
+    image_path <- concat_paths(path, paste0(rename_1, "_", rename_2, "_diff.png"))
     plot_PL(diffPL, image_path, c(0, x_max), c(-y_max, y_max), n, resolution)
   }
 }
 
 
-perm_test <- function(path, groups, reps=10000) {
+perm_test <- function(path, groups, depth=30, reps=10000, all=FALSE) {
   # get all possible pairs and iterate through them
   pairs <- combn(groups, 2)
   for (i in 1:ncol(pairs)) {
@@ -277,11 +285,11 @@ perm_test <- function(path, groups, reps=10000) {
     
     # get a matrix with rows as each PL within the first group
     dir_path_1 <- concat_paths(path, dir_1)
-    PL_mat_1 <- PLs_to_mat(dir_path_1)
+    PL_mat_1 <- PLs_to_mat(dir_path_1, depth, all)
     
     # get a matrix with rows as each PL within the second group
     dir_path_2 <- concat_paths(path, dir_2)
-    PL_mat_2 <- PLs_to_mat(dir_path_2)
+    PL_mat_2 <- PLs_to_mat(dir_path_2, depth, all)
     
     # compute average PL vector from each matrix
     avgPL_1 <- colMeans(PL_mat_1)
@@ -341,7 +349,7 @@ plot_PL <- function(PL, image_file, x_lim, y_lim, n, resolution) {
 }
 
 
-PLs_to_mat <- function(path) {
+PLs_to_mat <- function(path, depth, all) {
   # create holder for vector representations of PLs
   PLs <- list()
   
@@ -354,7 +362,14 @@ PLs_to_mat <- function(path) {
     # read the CSV and add landscape to total
     PL_file <- concat_paths(path, files[[i]])
     PL <- data.matrix(read.csv(PL_file))[,-1]    # remove first column
-    PLs[[i]] <- as.vector(PL)
+    
+    # determine how many functions to use
+    m <- ncol(PL)
+    if (all | m < depth) {
+      PLs[[i]] <- as.vector(PL)    # use all discretized landscape functions
+    } else {
+        PLs[[i]] <- as.vector(PL[,1:depth])    # only use top 1 to depth functions
+    }
   }
   
   # return a matrix with each row as a vector for each PL
